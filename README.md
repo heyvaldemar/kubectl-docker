@@ -49,6 +49,8 @@ Charts depend on how the image runs, not only on kubectl. This one keeps what `b
 
 **It is checked, not claimed.** `tests/drop-in-test.sh` runs on every build against the last versioned Bitnami image, `bitnamilegacy/kubectl:1.33.4`: the same user, entrypoint, command and `HOME`, the same calls a hook makes, and every executable on its `PATH` on this one's. The ones that are not here are named in [`tests/drop-in-absent.tsv`](tests/drop-in-absent.tsv), each with its reason: Bitnami's own package scripts, and tools Debian 13 no longer ships in its slim base (`apt-key`, `adduser`, util-linux extras). The test fails on any absence without a reason.
 
+A hook that calls only kubectl does not need this image. The Kubernetes project publishes `registry.k8s.io/kubectl:v1.37.1`: kubectl and nothing else, no shell. Use that one. This image is for the hooks that run `bash -c` with jq, yq or envsubst around kubectl, which is what most charts built on `bitnami/kubectl` do.
+
 ## Nothing you used yesterday disappears today
 
 Before anything is published, each build is compared with the image already published under its tag (`scripts/contract-test.sh`): every executable on its `PATH`, its user, `HOME`, working directory, entrypoint and command, and kubectl on the tag's minor and no older. A removal has to be named in `tests/contract-removed.tsv` and in the changelog. Each test is shown the breaks it exists for (`tests/plants.tsv`, run in CI): the image running as root, jq or the procps tools left out, a Bitnami path gone, `/.kube` not writable, another entrypoint, `HOME` moved, a yq binary with another checksum, a kubectl that is not the version the image says.
