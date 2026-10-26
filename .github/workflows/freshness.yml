@@ -1,0 +1,46 @@
+name: Pin Freshness
+# The two pins that do not move with the weekly build: the Debian base digest
+# and yq. Each goes red here when upstream has moved, so the bump is a pull
+# request someone reads, not a surprise in a Monday build.
+on:
+  schedule:
+    - cron: "30 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pins:
+    name: The base image and yq against upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The Debian base digest still names debian:trixie-slim
+        if: always()
+        run: |
+          set -euo pipefail
+          pinned="$(grep -m1 -oE 'debian:trixie-slim@sha256:[0-9a-f]{64}' Dockerfile)"
+          current="$(docker buildx imagetools inspect debian:trixie-slim --format '{{json .Manifest}}' | jq -r .digest)"
+          if [ "${pinned#*@}" != "$current" ]; then
+            echo "::error::debian:trixie-slim is now ${current}; the Dockerfile pins ${pinned#*@}"
+            exit 1
+          fi
+          echo "debian:trixie-slim ${current} is the pinned digest"
+
+      - name: yq is the newest release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pinned="$(sed -nE 's/^ARG YQ_VERSION=(v[0-9.]+)$/\1/p' Dockerfile)"
+          latest="$(gh api repos/mikefarah/yq/releases/latest --jq .tag_name)"
+          if [ "$pinned" != "$latest" ]; then
+            echo "::error::yq ${latest} is out; the Dockerfile pins ${pinned} (update YQ_VERSION and both YQ_SHA256 values from the release's checksums file)"
+            exit 1
+          fi
+          echo "yq ${pinned} is the newest release"

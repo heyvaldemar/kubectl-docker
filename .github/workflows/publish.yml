@@ -1,0 +1,317 @@
+name: Publish Docker Image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly rebuild: every line gets its current patch release and the
+    # week's Debian security updates. The pinned base digest moves only by
+    # pull request.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: heyvaldemar/kubectl
+
+jobs:
+  lint:
+    name: Lint Dockerfile and shell scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Hadolint
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+
+      - name: ShellCheck
+        run: |
+          shellcheck --version
+          shellcheck scripts/*.sh tests/*.sh
+
+  versions:
+    name: Resolve the kubectl lines to build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      lines: ${{ steps.lines.outputs.lines }}
+    steps:
+      # THE THREE NEWEST KUBERNETES MINORS, the window upstream supports, each
+      # with its current patch release. A minor that falls out of the three
+      # keeps its last image and stops moving.
+      - name: The newest three minors and their current patch releases
+        id: lines
+        run: |
+          set -euo pipefail
+          newest="$(curl -fsSL https://dl.k8s.io/release/stable.txt)"
+          minor="${newest#v}"; minor="${minor%.*}"
+          major="${minor%%.*}"; m="${minor#*.}"
+          lines='[]'
+          for i in 0 1 2; do
+            line="${major}.$((m - i))"
+            version="$(curl -fsSL "https://dl.k8s.io/release/stable-${line}.txt")"
+            # Strictly vMAJOR.MINOR.PATCH on this line: the value reaches build
+            # arguments and tag names, so nothing else is let through.
+            if ! [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || [ "${version%.*}" != "v${line}" ]; then
+              echo "::error::stable-${line}.txt answered something that is not a v${line}.N release"; exit 1
+            fi
+            lines="$(jq -c --arg minor "$line" --arg version "$version" --argjson newest "$([ "$i" = 0 ] && echo true || echo false)" \
+              '. + [{minor: $minor, version: $version, newest: $newest}]' <<<"$lines")"
+          done
+          echo "lines=$lines" >> "$GITHUB_OUTPUT"
+          echo "$lines" | jq .
+
+  test:
+    name: Test kubectl ${{ matrix.line.minor }} before it is published
+    runs-on: ubuntu-latest
+    needs: [lint, versions]
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        line: ${{ fromJSON(needs.versions.outputs.lines) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build the image for this runner
+        env:
+          KUBE_VERSION: ${{ matrix.line.version }}
+        run: docker build --build-arg "KUBE_VERSION=${KUBE_VERSION}" -t kubectl:local .
+
+      # Every promised tool answers, kubectl is the version the image says,
+      # it runs as 1001:0 with HOME=/ and a writable /.kube, and Bitnami's
+      # paths run.
+      - name: Smoke test
+        run: ./scripts/smoke-test.sh kubectl:local
+
+      # The same user, entrypoint, command and HOME as the last versioned
+      # bitnami/kubectl, and every executable on its PATH, or a reason.
+      - name: A drop-in for bitnami/kubectl
+        run: ./tests/drop-in-test.sh kubectl:local
+
+      # Nothing a pipeline used yesterday is gone today: every executable on
+      # the published image's PATH, its user, HOME, working directory,
+      # entrypoint and command, and kubectl on this tag's minor.
+      - name: The contract with what is already published
+        env:
+          MINOR: ${{ matrix.line.minor }}
+        run: ./scripts/contract-test.sh kubectl:local "heyvaldemar/kubectl:${MINOR}" "$MINOR"
+
+      - name: The tests, shown each violation they exist for
+        if: matrix.line.newest
+        env:
+          KUBE_VERSION: ${{ matrix.line.version }}
+        run: python3 tests/plant-violations.py -- bash -c "docker build -q --build-arg KUBE_VERSION=${KUBE_VERSION} -t kubectl:plant . >/dev/null && ./scripts/smoke-test.sh kubectl:plant >/dev/null 2>&1 && ./tests/drop-in-test.sh kubectl:plant >/dev/null 2>&1"
+
+  build:
+    name: Build and publish kubectl ${{ matrix.line.minor }}
+    runs-on: ubuntu-latest
+    # Nothing is published that the test has not passed.
+    needs: [lint, versions, test]
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        line: ${{ fromJSON(needs.versions.outputs.lines) }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Docker Hub credentials are set
+        if: github.event_name != 'pull_request'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::error::this repository has no DOCKERHUB_USERNAME or DOCKERHUB_TOKEN secret; add both (a Docker Hub access token with write access to heyvaldemar/kubectl) and run the workflow again"
+            exit 1
+          fi
+
+      - name: Compute build metadata
+        id: meta-build
+        env:
+          VERSION: ${{ matrix.line.version }}
+        run: |
+          set -euo pipefail
+          {
+            echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "vcs_ref=${GITHUB_SHA}"
+            echo "patch=${VERSION#v}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # The tags bitnami/kubectl users already write: latest, the minor
+      # (1.37) and the patch release (1.37.1). Each moves with the weekly
+      # rebuild, so a pinned tag still receives security updates; pin a digest
+      # for an image that never changes.
+      - name: Docker image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=false
+          tags: |
+            type=raw,value=latest,enable=${{ matrix.line.newest && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+            type=raw,value=${{ matrix.line.minor }}
+            type=raw,value=${{ steps.meta-build.outputs.patch }}
+          labels: |
+            org.opencontainers.image.title=kubectl
+            org.opencontainers.image.description=kubectl on Debian 13, one Kubernetes minor per tag, rebuilt weekly, signed; a drop-in for bitnami/kubectl.
+            org.opencontainers.image.vendor=heyvaldemar
+            org.opencontainers.image.licenses=MIT
+            io.heyvaldemar.kubectl.version=${{ matrix.line.version }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        timeout-minutes: 20
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          pull: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            KUBE_VERSION=${{ matrix.line.version }}
+            VCS_REF=${{ steps.meta-build.outputs.vcs_ref }}
+            BUILD_DATE=${{ steps.meta-build.outputs.build_date }}
+          cache-from: type=gha,scope=kubectl-${{ matrix.line.minor }}
+          cache-to: type=gha,mode=max,scope=kubectl-${{ matrix.line.minor }}
+          sbom: true
+          provenance: mode=max
+
+      - name: Attest build provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: false
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        # Cosign v2: tag-based .sig storage, which works on Docker Hub today
+        # (heyvaldemar/aws-kubectl-docker, hotfix #20).
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: "v2.6.1"
+
+      - name: Sign image with cosign (keyless)
+        if: github.event_name != 'pull_request'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAGS}" ] || [ -z "${DIGEST}" ]; then
+            echo "ERROR: TAGS or DIGEST is empty" >&2
+            exit 1
+          fi
+          echo "${TAGS}" | while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "Signing: ${tag}@${DIGEST}"
+            cosign sign --yes "${tag}@${DIGEST}"
+          done
+
+  scan-trivy:
+    name: Scan published kubectl ${{ matrix.line.minor }} with Trivy
+    runs-on: ubuntu-latest
+    needs: [versions, build]
+    if: github.event_name != 'pull_request'
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        line: ${{ fromJSON(needs.versions.outputs.lines) }}
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The digest ${{ matrix.line.minor }} names now
+        id: digest
+        env:
+          MINOR: ${{ matrix.line.minor }}
+        run: |
+          set -euo pipefail
+          digest="$(docker buildx imagetools inspect "${IMAGE_NAME}:${MINOR}" --format '{{json .Manifest}}' | jq -r .digest)"
+          case "$digest" in sha256:*) ;; *) echo "::error::could not resolve ${IMAGE_NAME}:${MINOR}"; exit 1 ;; esac
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      # Findings do not fail this job; a scan that cannot finish does.
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}@${{ steps.digest.outputs.digest }}
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload Trivy SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-${{ matrix.line.minor }}
+
+  dockerhub-description:
+    name: Sync Docker Hub description
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          short-description: "kubectl, one Kubernetes minor per tag, rebuilt weekly and signed. A drop-in for bitnami/kubectl."
+          readme-filepath: ./README.md

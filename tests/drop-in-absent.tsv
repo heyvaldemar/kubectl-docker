@@ -1,0 +1,45 @@
+# Executables the last versioned bitnami/kubectl image (bitnamilegacy/kubectl:1.33.4,
+# Debian 12) has on its PATH and this image does not. A shell glob, a tab, the reason.
+# tests/drop-in-test.sh fails on any absence not matched here.
+install_packages	Bitnami's own package helper scripts, not part of Debian
+uninstall_packages	Bitnami's own package helper scripts, not part of Debian
+run-script	Bitnami's own helper script
+apt-key	removed from apt in Debian 13
+dpkg-fsys-usrunmess	removed from dpkg in Debian 13
+gpgv	not in the Debian 13 slim base; apt verifies with sqv
+md5sum.textutils	a Debian 12 compatibility link, gone in Debian 13
+perl5.*	versioned name of Debian 12's perl 5.36; this image has perl 5.40 and cpan from Debian 13, under their plain names
+cpan5.*	versioned name of Debian 12's perl 5.36
+findrule	a perl module tool from Debian 12's base, not used by kubectl hooks
+adduser	user management, not in the Debian 13 slim base; images do not add users at run time
+addgroup	user management, not in the Debian 13 slim base
+deluser	user management, not in the Debian 13 slim base
+delgroup	user management, not in the Debian 13 slim base
+cppw	shadow password tools, moved out of the Debian 13 base
+cpgr	shadow password tools, moved out of the Debian 13 base
+faillog	login accounting, moved out of the Debian 13 base
+groupmems	shadow group tools, moved out of the Debian 13 base
+lastlog	login accounting, moved out of the Debian 13 base
+last	login accounting (util-linux), moved out of the Debian 13 base
+lastb	login accounting (util-linux), moved out of the Debian 13 base
+utmpdump	login accounting (util-linux), moved out of the Debian 13 base
+mesg	terminal tool (util-linux), moved out of the Debian 13 base
+hwclock	hardware clock, meaningless in a container
+ctrlaltdel	system control, meaningless in a container
+addpart	disk partition tools, meaningless in a container
+delpart	disk partition tools, meaningless in a container
+resizepart	disk partition tools, meaningless in a container
+fincore	util-linux-extra in Debian 13
+lsfd	util-linux-extra in Debian 13
+lsirq	util-linux-extra in Debian 13
+fsck.*	filesystem tools, meaningless in a container
+mkfs.*	filesystem tools, meaningless in a container
+i386	setarch architecture links, util-linux-extra in Debian 13
+x86_64	setarch architecture links, util-linux-extra in Debian 13
+initctl	sysvinit compatibility, not in the Debian 13 base
+insserv	sysvinit compatibility, not in the Debian 13 base
+startpar	sysvinit compatibility, not in the Debian 13 base
+gettextize	gettext development tools; only envsubst (gettext-base) is what hooks use
+xgettext	gettext development tools
+recode-sr-latin	gettext development tools
+msg*	gettext development tools
