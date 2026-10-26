@@ -6,7 +6,7 @@
 
 kubectl for pipelines and Helm hooks: one Kubernetes minor per tag, rebuilt every week, signed, and laid out like `bitnami/kubectl`, so a chart written for that image runs on this one unchanged.
 
-`bitnami/kubectl` has published one tag since August 2025: `latest`. Its versioned tags stopped at 1.33.4 on 2025-08-22 and live on, unmaintained, as `bitnamilegacy/kubectl`. A chart or pipeline that pinned `bitnami/kubectl:1.33` stopped receiving security fixes that day, and one that switched to `latest` now gets whatever kubectl minor ships next, which kubectl's one-minor version skew policy does not promise will talk to its cluster.
+`bitnami/kubectl` has published one tag since August 2025: `latest`. Its versioned tags stopped at 1.33.4 on 2025-08-22 and live on, unmaintained, as `bitnamilegacy/kubectl`, pulled 21.6 million times by 2026-10-26. A chart or pipeline that pinned `bitnami/kubectl:1.33` stopped receiving security fixes that day, and one that switched to `latest` now gets whatever kubectl minor ships next, which kubectl's one-minor version skew policy does not promise will talk to its cluster.
 
 ```bash
 docker run --rm heyvaldemar/kubectl:1.37 version --client
