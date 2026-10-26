@@ -18,14 +18,17 @@ fail=0
 bad() { echo "FAIL: $*" >&2; fail=1; }
 ok() { echo "OK: $*"; }
 
-# The reference is amd64 only; compare on the same architecture.
+# The reference is amd64 only; compare on the same architecture. Docker
+# Desktop's containerd store needs --platform to read an amd64 image's config
+# on an arm64 host; older engines (GitHub's runners) do not know the flag.
 docker pull -q --platform linux/amd64 "$REF" >/dev/null
+ref_inspect() { docker image inspect --platform linux/amd64 "$@" 2>/dev/null || docker image inspect "$@"; }
 for field in User Entrypoint Cmd; do
-  a="$(docker image inspect --platform linux/amd64 -f "{{json .Config.$field}}" "$REF")"
+  a="$(ref_inspect -f "{{json .Config.$field}}" "$REF")"
   b="$(docker image inspect -f "{{json .Config.$field}}" "$IMAGE")"
   if [ "$a" = "$b" ]; then ok "$field as bitnami/kubectl ($b)"; else bad "$field: bitnami/kubectl $a, this image $b"; fi
 done
-a="$(docker image inspect --platform linux/amd64 -f '{{range .Config.Env}}{{println .}}{{end}}' "$REF" | sed -n 's/^HOME=//p')"
+a="$(ref_inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$REF" | sed -n 's/^HOME=//p')"
 b="$(docker image inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$IMAGE" | sed -n 's/^HOME=//p')"
 if [ "$a" = "$b" ]; then ok "HOME as bitnami/kubectl ($b)"; else bad "HOME: bitnami/kubectl '$a', this image '$b'"; fi
 
