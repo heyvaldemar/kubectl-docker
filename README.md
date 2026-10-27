@@ -80,6 +80,10 @@ docker build --build-arg KUBE_VERSION=v1.37.1 -t kubectl:local .
 
 `KUBE_VERSION` is required; the build refuses to guess.
 
+## Bugs, changes and vulnerabilities
+
+Report a bug or ask for a change in [issues](https://github.com/heyvaldemar/kubectl-docker/issues). Pull requests are welcome: every test above runs on them before anything can merge. Report a vulnerability privately, as [SECURITY.md](SECURITY.md) describes.
+
 ## Related
 
 [heyvaldemar/aws-kubectl](https://hub.docker.com/r/heyvaldemar/aws-kubectl) is the same idea with the AWS CLI beside kubectl, for EKS pipelines, and the same weekly lines (`kube-1.37`).
