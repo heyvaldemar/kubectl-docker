@@ -2,6 +2,8 @@
 
 [![Publish Docker Image](https://github.com/heyvaldemar/kubectl-docker/actions/workflows/publish.yml/badge.svg?branch=main)](https://github.com/heyvaldemar/kubectl-docker/actions/workflows/publish.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/heyvaldemar/kubectl.svg)](https://hub.docker.com/r/heyvaldemar/kubectl)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/heyvaldemar/kubectl-docker/badge)](https://scorecard.dev/viewer/?uri=github.com/heyvaldemar/kubectl-docker)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15978/badge)](https://www.bestpractices.dev/projects/15978)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 kubectl for pipelines and Helm hooks: one Kubernetes minor per tag, rebuilt every week, signed, and laid out like `bitnami/kubectl`, so a chart written for that image runs on this one unchanged.
