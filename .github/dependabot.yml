@@ -19,3 +19,20 @@ updates:
           - "*"
     commit-message:
       prefix: "ci"
+
+  # The Debian base is pinned by digest, and Debian repushes trixie-slim every
+  # few weeks with security fixes. Until 2026-10-28 that pin moved only when a
+  # person read the freshness alarm and opened a pull request; the fleet triage
+  # reported it as "needs a human" each time. Dependabot now opens that pull
+  # request, the real build gates it, and the auto-merge workflow merges it.
+  #
+  # DAILY, AT 03:00 UTC, deliberately: before the freshness check at 05:30, so
+  # a repush is usually carried before the alarm can read it.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "Etc/UTC"
+    commit-message:
+      prefix: "build"
