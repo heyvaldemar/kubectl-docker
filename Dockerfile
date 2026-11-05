@@ -12,7 +12,7 @@
 # from the release's own checksums file. Nothing from this stage but the two
 # binaries reaches the image.
 # ──────────────────────────────────────────────────────────────────────────────
-FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4 AS builder
+FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2 AS builder
 
 ARG TARGETARCH
 ARG KUBE_VERSION
@@ -48,7 +48,7 @@ RUN [ -n "${KUBE_VERSION}" ] || { echo "KUBE_VERSION is required, for example v1
 # ──────────────────────────────────────────────────────────────────────────────
 # Stage 2: the image.
 # ──────────────────────────────────────────────────────────────────────────────
-FROM debian:trixie-slim@sha256:f6b08b09a05725f9431502d3b5714f5c4576e82c1a84fa1debe0c24a7e0c3ec4 AS final
+FROM debian:trixie-slim@sha256:a72b4433de1cf7d6bae0c4cee74d0547f58601a643b3375f070c51600d63b6b2 AS final
 
 ARG KUBE_VERSION
 ARG VCS_REF=unknown

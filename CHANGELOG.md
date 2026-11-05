@@ -11,6 +11,12 @@ and the pipeline that builds it.
 
 _(no unreleased changes yet)_
 
+## [1.0.1] - 2026-11-05
+
+### Changed
+
+- **Debian's 2026-11-04 `debian:trixie-slim` repush is the base of every line.** The pin moves from `sha256:f6b08b09…` to `sha256:a72b4433…`. kubectl, yq and the checksums they are verified by stay as they were.
+
 ## [1.0.0] - 2026-10-26
 
 ### Added
@@ -21,5 +27,6 @@ _(no unreleased changes yet)_
 - **kubectl and yq verified by sha256** before they are installed; every digest signed with cosign, keyless, with SBOM, SLSA provenance and a GitHub build attestation; Trivy on every published line.
 - **Every test shown the breaks it exists for**: nine planted violations in `tests/plants.tsv`, run in CI.
 
-[Unreleased]: https://github.com/heyvaldemar/kubectl-docker/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/heyvaldemar/kubectl-docker/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.1
 [1.0.0]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.0
