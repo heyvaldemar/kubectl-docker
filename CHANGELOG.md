@@ -15,7 +15,7 @@ _(no unreleased changes yet)_
 
 ### Changed
 
-- **Debian's 2026-11-04 `debian:trixie-slim` repush is the base of every line.** The pin moves from `sha256:f6b08b09…` to `sha256:a72b4433…`. kubectl, yq and the checksums they are verified by stay as they were.
+- **Debian's 2026-11-04 `debian:trixie-slim` repush is the base of every line.** The pin moves from `sha256:f6b08b09…` to `sha256:a72b4433…`. The build picked up kubectl 1.36.6 and 1.35.10, the current patch releases of their minors, as every weekly rebuild does; 1.37 stays on 1.37.2 and yq on v4.54.1.
 
 ## [1.0.0] - 2026-10-26
 
