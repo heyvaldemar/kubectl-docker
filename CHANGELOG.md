@@ -11,6 +11,12 @@ and the pipeline that builds it.
 
 _(no unreleased changes yet)_
 
+## [1.0.2] - 2026-11-07
+
+### Changed
+
+- **yq v4.54.2 in every line**, verified by the sha256 values its release's checksums file gives. It quotes unsafe values in `-o=shell -r` output (GHSA-h2cv-65fq-jgrp) and fixes `map_values`, `ireduce` and comment handling; the rest is in its release notes. kubectl stays on 1.37.2, 1.36.6 and 1.35.10.
+
 ## [1.0.1] - 2026-11-05
 
 ### Changed
@@ -27,6 +33,7 @@ _(no unreleased changes yet)_
 - **kubectl and yq verified by sha256** before they are installed; every digest signed with cosign, keyless, with SBOM, SLSA provenance and a GitHub build attestation; Trivy on every published line.
 - **Every test shown the breaks it exists for**: nine planted violations in `tests/plants.tsv`, run in CI.
 
-[Unreleased]: https://github.com/heyvaldemar/kubectl-docker/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/heyvaldemar/kubectl-docker/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.2
 [1.0.1]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.1
 [1.0.0]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.0

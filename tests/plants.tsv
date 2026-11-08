@@ -6,5 +6,5 @@
 "Dockerfile"	" \\\n && chmod 0775 /.kube"	""	"/.kube is not writable by the runtime user"
 "Dockerfile"	"ENTRYPOINT [\"kubectl\"]"	"ENTRYPOINT [\"bash\"]"	"the entrypoint is not kubectl"
 "Dockerfile"	"ENV HOME=/ \\"	"ENV HOME=/root \\"	"HOME moves away from /"
-"Dockerfile"	"ARG YQ_SHA256_AMD64=8e34fc298390875de416e6a4afcb8cabeceb25d9aa8506c1a2f9353cf702ea5f\nARG YQ_SHA256_ARM64=189088da0c6429ec5178dfaab1a114805f6cab0b61b165ab236efedf1d57a71b"	"ARG YQ_SHA256_AMD64=0000000000000000000000000000000000000000000000000000000000000000\nARG YQ_SHA256_ARM64=0000000000000000000000000000000000000000000000000000000000000000"	"a yq binary with another checksum is accepted"
+"Dockerfile"	"ARG YQ_SHA256_AMD64=44c7759059b4910827a0059a2757b22001e59360cdecdb2ef8dedc4b6c7e9f32\nARG YQ_SHA256_ARM64=bd44211dcd29a5f0eb701d4b7eb5ccd0cfff3bd3966cb4f7f9bd5b13701d997e"	"ARG YQ_SHA256_AMD64=0000000000000000000000000000000000000000000000000000000000000000\nARG YQ_SHA256_ARM64=0000000000000000000000000000000000000000000000000000000000000000"	"a yq binary with another checksum is accepted"
 "Dockerfile"	"printf '%s\\n' \"$KUBE_VERSION\" > kube-version"	"printf 'v0.0.0\\n' > kube-version"	"the version marker no longer matches kubectl"
