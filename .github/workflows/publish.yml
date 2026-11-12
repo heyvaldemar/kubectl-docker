@@ -7,8 +7,9 @@ on:
     branches: [main]
   schedule:
     # Weekly rebuild: every line gets its current patch release and the
-    # week's Debian security updates. The pinned base digest moves only by
-    # pull request.
+    # week's Debian security updates. The pinned base digest never moves in
+    # this build: a commit on main moves it, a person's or, for a base
+    # re-pushed with the same toolchain, the fleet triage's.
     - cron: "0 6 * * 1"
   workflow_dispatch:
 

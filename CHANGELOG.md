@@ -9,9 +9,25 @@ and the pipeline that builds it.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-12
+
+### Changed
+
+- **yq v4.54.3 in every line**, verified by the sha256 values its release's checksums file gives. kubectl stays on 1.37.2, 1.36.6 and 1.35.10, the current patch releases of their minors.
+
+### Upgrading
+
+yq v4.54.3 changes three things a script may rely on:
+
+- **`yq -i` refuses a read-only file**, and on a symbolic link it writes the edited file in the link's place instead of changing the file the link points to (yq #2973). A ConfigMap or Secret volume is mounted read-only, so `yq -i` on its files failed before as well. A script that writes its own file into an emptyDir and edits that in place, as Bitnami's milvus chart does, works as before.
+- **`--split-exp` writes only inside the current directory** unless `--security-allow-write-any-path` is given, which restores the old behaviour for trusted input (yq #2965).
+- **YAML aliases are kept across the documents of one input stream**, without leaking anchors between files (yq #2956).
+
+The drop-in test now runs `yq e -i` on a file the script wrote itself, on both images, and checks each of the three changes on this one; each of those checks fails on yq v4.54.2.
+
 ### Fixed
 
-- **The daily pin check no longer reports an index pushed again over the same builds as drift.** `freshness.yml` compared each pinned base digest with the digest its tag names now and failed on any difference, so a publisher pushing the index again over the very same images (a platform added, an attestation rewritten) turned it red for an image that had not changed. It now also compares the builds this image is made from under both digests: linux/amd64 for a stage built on the runner, linux/amd64 and linux/arm64 for a stage built for each published platform. The same builds pass with a notice naming both digests; a new build, or one that cannot be read, still fails.
+- **The daily pin check no longer reports an index pushed again over the same builds as drift.** `freshness.yml` compared each pinned base digest with the digest its tag names now and failed on any difference, so a publisher pushing the index again over the very same images (a platform added, an attestation rewritten) turned it red for an image that had not changed. It now also compares the builds this image is made from under both digests: linux/amd64 alone when every stage from that base is built on the runner (`--platform=$BUILDPLATFORM` or `${BUILDPLATFORM}`), linux/amd64 and linux/arm64 when any stage is built for each published platform, as the fleet's triage judges a re-pushed base. The same builds pass with a notice naming both digests; a new build, or one that cannot be read, still fails.
 
 ## [1.0.2] - 2026-11-07
 
@@ -35,7 +51,8 @@ and the pipeline that builds it.
 - **kubectl and yq verified by sha256** before they are installed; every digest signed with cosign, keyless, with SBOM, SLSA provenance and a GitHub build attestation; Trivy on every published line.
 - **Every test shown the breaks it exists for**: nine planted violations in `tests/plants.tsv`, run in CI.
 
-[Unreleased]: https://github.com/heyvaldemar/kubectl-docker/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/heyvaldemar/kubectl-docker/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.3
 [1.0.2]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.2
 [1.0.1]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.1
 [1.0.0]: https://github.com/heyvaldemar/kubectl-docker/releases/tag/v1.0.0
