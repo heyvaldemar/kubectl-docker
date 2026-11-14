@@ -93,7 +93,7 @@ ENV HOME=/ \
 
 LABEL org.opencontainers.image.title="kubectl" \
       org.opencontainers.image.description="kubectl on Debian 13, one Kubernetes minor per tag, rebuilt weekly, signed; a drop-in for bitnami/kubectl." \
-      org.opencontainers.image.authors="Vladimir Mikhalev <v@valdemar.ai>" \
+      org.opencontainers.image.authors="Vladimir Mikhalev <connect@valdemar.ai>" \
       org.opencontainers.image.vendor="heyvaldemar" \
       org.opencontainers.image.source="https://github.com/heyvaldemar/kubectl-docker" \
       org.opencontainers.image.documentation="https://github.com/heyvaldemar/kubectl-docker#readme" \
