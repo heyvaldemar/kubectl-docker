@@ -61,7 +61,7 @@ Before anything is published, each build is compared with the image already publ
 
 - Debian 13 slim, pinned by digest.
 - kubectl verified against the sha256 dl.k8s.io publishes beside it; yq against the sha256 from its release's own checksums file, pinned in the `Dockerfile`. Neither is installed if it does not match.
-- Every published digest is signed with cosign, keyless, by this repository's workflow; SBOM (SPDX) and SLSA provenance are attached, and build provenance is attested in [GitHub Attestations](https://github.com/heyvaldemar/kubectl-docker/attestations).
+- Every published digest is signed with cosign, keyless, by this repository's workflow, with one exception: the image `1.36` and `1.36.6` named on 5 November 2026 from 15:38 to 17:07 UTC (`sha256:f6f9dc5ef80f…`, no tag names it now), whose signing was skipped when cosign could not be installed. See the CHANGELOG. Each run signs before it attests, then reads every tag it pushed back from Docker Hub and fails if the digest it names has no signature that verifies as this workflow; before anything is published, a `signing` job runs the same steps on a local registry with each failure planted (the attestation failing, signing failing or silently skipped, a tag moved to an image this workflow did not sign, a push that stopped half way). SBOM (SPDX) and SLSA provenance are attached, and build provenance is attested in [GitHub Attestations](https://github.com/heyvaldemar/kubectl-docker/attestations).
 - Trivy scans every published line and reports CRITICAL and HIGH fixable findings to the Security tab.
 - Every GitHub Action is pinned to a commit SHA, except the SLSA generator `release-assets.yml` calls by tag (`@v2.1.0`), because it verifies its own reference at run time and refuses a SHA.
 
